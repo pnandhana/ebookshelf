@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bookshelf</title>
+<style>
+  :root {
+    --bg: #f3efe8; --ink: #1d1a16; --muted: #6f675c; --line: #d9d1c3;
+    --wood: #b98a5e; --wood-dark: #8a6240; --accent: #1d1a16;
+    --h: 300px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: Georgia, "Times New Roman", Times, serif;
+    min-height: 100vh; display: flex; flex-direction: column;
+    transition: background-color .7s ease;
+  }
+  header { padding: 56px 24px 8px; text-align: center; }
+  .eyebrow { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: clamp(36px, 6vw, 64px); margin: 10px 0 8px; letter-spacing: -.01em; }
+  header p { margin: 0; color: var(--muted); font-size: 16px; }
+
+  .shelf-wrap { max-width: 1100px; width: 100%; margin: 0 auto; padding: 0 16px; }
+  .scroller { overflow-x: auto; padding: 48px 24px 0; scrollbar-width: thin; }
+  .row { display: flex; align-items: flex-end; gap: 3px; width: max-content; margin: 0 auto; min-height: var(--h); }
+  .plank {
+    height: 18px; border-radius: 3px;
+    background: linear-gradient(#caa076, var(--wood) 45%, var(--wood-dark));
+    box-shadow: 0 14px 22px -10px rgba(60, 40, 20, .45);
+  }
+
+  .book {
+    --cw: calc(var(--h) * var(--a));
+    all: unset; cursor: pointer; display: flex; flex-shrink: 0;
+    height: var(--h); width: var(--s);
+    perspective: 1200px; transition: width .5s ease, transform .25s ease;
+  }
+  .book:hover:not([aria-pressed="true"]) { transform: translateY(-8px); }
+  .book:focus-visible .spine { outline: 3px solid #2f6fed; outline-offset: 2px; }
+  .book[aria-pressed="true"] { width: calc(var(--s) + var(--cw)); margin: 0 10px; }
+  .spine, .cover { flex-shrink: 0; height: 100%; transition: transform .5s ease; transform-style: preserve-3d; }
+  .spine {
+    width: var(--s); background: var(--c); color: var(--t);
+    transform-origin: right; transform: rotateY(0deg);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 2px 0 3px rgba(255,255,255,.25), inset -3px 0 5px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.08);
+    border-radius: 2px 0 0 2px;
+  }
+  .spine span {
+    writing-mode: vertical-rl; font-size: 12px; font-weight: 600; letter-spacing: .03em;
+    max-height: calc(var(--h) - 28px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  .cover {
+    width: var(--cw); transform-origin: left; transform: rotateY(88deg);
+    background: var(--c) center / cover no-repeat; position: relative;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.08);
+  }
+  .cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.22), rgba(255,255,255,.12) 6%, transparent 14%); }
+  .book[aria-pressed="true"] .spine { transform: rotateY(-60deg); }
+  .book[aria-pressed="true"] .cover { transform: rotateY(30deg); box-shadow: 18px 14px 28px -12px rgba(40,25,10,.5); }
+
+  .detail { max-width: 720px; margin: 36px auto 0; padding: 0 24px 64px; text-align: center; flex: 1; }
+  .detail h2 { font-family: Georgia, serif; font-weight: 400; font-size: clamp(24px, 3.4vw, 34px); margin: 0 0 6px; }
+  .detail .sub { color: var(--muted); margin: 0 0 6px; font-size: 16px; line-height: 1.45; }
+  .detail .meta { color: var(--muted); font-size: 14px; margin: 0 0 22px; }
+  .open {
+    display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+    background: var(--accent); color: #fff; padding: 13px 26px; border-radius: 999px;
+    font-size: 15px; font-weight: 600; transition: transform .15s ease, background .15s ease;
+  }
+  .open:hover { background: #3a332b; transform: translateY(-1px); }
+  .open:focus-visible { outline: 3px solid #2f6fed; outline-offset: 3px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 0 16px 24px; }
+
+
+  header { position: relative; }
+  .window { position: absolute; top: 40px; right: max(24px, calc(50% - 520px)); width: 200px; }
+  .frame {
+    position: relative; aspect-ratio: 4 / 3; overflow: hidden;
+    border: 9px solid #a67a50; border-radius: 4px; background: #a67a50;
+    box-shadow: 0 12px 22px -10px rgba(60, 40, 20, .5), 0 0 0 1px rgba(60, 40, 20, .25);
+  }
+  .frame .photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .frame svg { display: block; width: 100%; height: 100%; }
+  .frame::before, .frame::after { content: ""; position: absolute; background: #a67a50; box-shadow: 0 0 3px rgba(40, 25, 10, .45); }
+  .frame::before { left: calc(50% - 3px); top: 0; bottom: 0; width: 6px; }
+  .frame::after { top: calc(50% - 3px); left: 0; right: 0; height: 6px; }
+  .glass { position: absolute; inset: 0; box-shadow: inset 0 0 14px rgba(40, 25, 10, .35); pointer-events: none; }
+  .sill { height: 10px; margin: 0 -10px; border-radius: 2px; background: linear-gradient(#caa076, #8a6240); box-shadow: 0 8px 12px -6px rgba(60, 40, 20, .45); }
+  .clouds { animation: drift 70s linear infinite; }
+  .clouds.slow { animation-duration: 110s; animation-delay: -50s; }
+  @keyframes drift { from { transform: translateX(-90px); } to { transform: translateX(230px); } }
+
+  .chime {
+    all: unset; cursor: pointer; position: fixed; top: 16px; left: 16px; z-index: 5;
+    display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px;
+    background: rgba(255, 255, 255, .7); color: var(--ink); font-size: 14px; font-weight: 600;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .12), 0 6px 14px -8px rgba(0, 0, 0, .35);
+  }
+  .chime:hover { background: rgba(255, 255, 255, .92); }
+  .chime:focus-visible { outline: 3px solid #2f6fed; outline-offset: 2px; }
+  .chime[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .chime .dot { width: 8px; height: 8px; border-radius: 50%; background: #b0a898; }
+  .chime[aria-pressed="true"] .dot { background: #7be0a0; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  @media (max-width: 900px) { .window { position: static; margin: 0 auto 22px; width: 170px; } header { padding-top: 72px !important; } }
+
+  /* Photo background */
+  body {
+    background: linear-gradient(rgba(12, 18, 14, .38), rgba(12, 18, 14, .58)), url("assets/background.jpg") center / cover no-repeat fixed #2c3a30;
+    color: #fff;
+  }
+  header, .detail { text-shadow: 0 1px 12px rgba(0, 0, 0, .55); }
+  .eyebrow, .detail .sub, .detail .meta, footer { color: rgba(255, 255, 255, .86); }
+  footer { text-shadow: 0 1px 8px rgba(0, 0, 0, .6); }
+  .open { background: #fff; color: #1d1a16; text-shadow: none; }
+  .open:hover { background: #ece7de; }
+  .open:focus-visible, .book:focus-visible .spine, .chime:focus-visible { outline-color: #fff; }
+
+  /* Glass card behind the book name and description */
+  .detail {
+    flex: none; width: min(680px, calc(100% - 32px)); max-width: none;
+    margin: 32px auto 40px; padding: 28px 28px 32px; border-radius: 20px;
+    background: rgba(16, 22, 18, .58);
+    -webkit-backdrop-filter: blur(16px) saturate(1.25); backdrop-filter: blur(16px) saturate(1.25);
+    border: 1px solid rgba(255, 255, 255, .28);
+    box-shadow: 0 18px 40px -18px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .18);
+    text-shadow: none;
+  }
+  .detail h2, .detail .sub, .detail .meta { color: #fff; }
+  .detail .meta { opacity: .9; }
+  footer { margin-top: auto; }
+  @media (max-width: 640px) { :root { --h: 230px; } header { padding-top: 36px; } .scroller { padding: 36px 12px 0; } .row { margin: 0; } }
+  @media (prefers-reduced-motion: reduce) { body, .book, .spine, .cover { transition: none; } .clouds, .chime .dot { animation: none !important; } }
+</style>
+</head>
+<body>
+<button class="chime" id="chime" type="button" aria-pressed="false"><span class="dot" aria-hidden="true"></span><span id="chime-label">Wind chimes: off</span></button>
+<header>
+</header>
+
+<main class="shelf-wrap">
+  <div class="scroller"><div class="row" id="row"></div></div>
+  <div class="plank"></div>
+</main>
+
+<section class="detail" aria-live="polite">
+  <h2 id="d-title"></h2>
+  <p class="sub" id="d-sub"></p>
+  <p class="meta" id="d-meta"></p>
+  <a class="open" id="d-open" target="_blank" rel="noopener">Open book <span aria-hidden="true">&#8599;</span></a>
+</section>
+
+<script>
+const Z = " (z-library.sk, 1lib.sk, z-lib.sk)";
+const BOOKS = [
+  { t: "Decolonizing Design", sub: "A Cultural Justice Guidebook", a: "Elizabeth (Dori) Tunstall", p: 171, c: "#F8EFC8", r: 556/720, img: "decolonizing-design", f: "Decolonizing Design (Elizabeth (Dori) Tunstall)", z: 1 },
+  { t: "Design after Capitalism", sub: "Transforming Design Today for an Equitable Tomorrow", a: "Matthew Wizinsky", p: 415, c: "#E6E6E6", r: 556/720, img: "design-after-capitalism", f: "Design after Capitalism Transforming Design Today for an Equitable Tomorrow (Matthew Wizinsky)", z: 1 },
+  { t: "Designing Search", sub: "UX Strategies for eCommerce Success", a: "Greg Nudelman", p: 374, c: "#787A8E", r: 556/720, img: "designing-search", f: "Designing Search UX Strategies for ECommerce Success (Greg Nudelman)", z: 1 },
+  { t: "Fixing the Enterprise UX Process", sub: "The Field Guide for Product Teams", a: "Joe Natoli", p: 81, c: "#F5F5F5", r: 509/720, img: "fixing-the-enterprise-ux-process", f: "Fixing the Enterprise UX Process. The Field Guide for Product Teams (Joe Natoli)", z: 1 },
+  { t: "Ruined by Design", sub: "How Designers Destroyed the World, and What We Can Do to Fix It", a: "Mike Monteiro", p: 222, c: "#C6827D", r: 556/720, img: "ruined-by-design", f: "Ruined by Design - How Designers Destroyed the World, and What We Can Do to Fix It (2019) (Mike Monteiro)", z: 1 },
+  { t: "Solving Product Design Exercises", sub: "Questions & Answers", a: "Artiom Dashinsky", p: 145, c: "#FDFDFD", r: 556/720, img: "solving-product-design-exercises", f: "Solving Product Design Exercises Questions  Answers (Artiom Dashinsky)", z: 1 },
+  { t: "Technically Wrong", sub: "Sexist Apps, Biased Algorithms, and Other Threats of Toxic Tech", a: "Sara Wachter-Boettcher", p: 206, c: "#0AB0B4", r: 556/720, img: "technically-wrong", f: "Technically Wrong Sexist Apps, Biased Algorithms, and Other Threats of Toxic Tech (Sara Wachter-Boettcher)", z: 1 },
+  { t: "The Path to Senior Product Designer", sub: "An Actionable Growth Plan for a UX Design Career", a: "Artiom Dashinsky", p: 285, c: "#FE6B0D", r: 556/720, img: "the-path-to-senior-product-designer", f: "The path to senior product designer (Artiom Dashinsky)", z: 1 },
+  { t: "The UX Careers Handbook", sub: "", a: "Cory Lebson", p: 299, c: "#F7F8FA", r: 583/720, img: "the-ux-careers-handbook", f: "The UX careers handbook (Lebson, Cory)", z: 1 },
+  { t: "The User Experience Team of One", sub: "A Research and Design Survival Guide", a: "Leah Buley", p: 265, c: "#A68E8E", r: 480/720, img: "the-user-experience-team-of-one", f: "UX Team of One", z: 0 },
+];
+
+const BG = ["#efe2b8", "#dfe3f5", "#d9dae6", "#dbe9f4", "#e9c3bd", "#f7dfd9", "#c9ecec", "#ffdcc2", "#e6efd9", "#ead6d6"];
+const enc = s => encodeURIComponent(s);
+const ink = hex => {
+  const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? "#1d1a16" : "#ffffff";
+};
+const row = document.getElementById("row");
+
+function select(i) {
+  [...row.children].forEach((el, j) => el.setAttribute("aria-pressed", j === i ? "true" : "false"));
+  const b = BOOKS[i];
+  document.getElementById("d-title").textContent = b.t;
+  document.getElementById("d-sub").textContent = b.sub;
+  document.getElementById("d-meta").textContent = b.a + " · " + b.p + " pages";
+  const o = document.getElementById("d-open");
+  o.href = "pdfs/" + enc(b.f + (b.z ? Z : "") + ".pdf");
+  o.setAttribute("aria-label", "Open " + b.t + " as PDF in a new tab");
+}
+
+BOOKS.forEach((b, i) => {
+  const el = document.createElement("button");
+  el.className = "book";
+  el.type = "button";
+  el.title = b.t;
+  el.style.setProperty("--s", Math.round(24 + b.p * 0.085) + "px");
+  el.style.setProperty("--a", b.r.toFixed(4));
+  el.style.setProperty("--c", b.c);
+  el.style.setProperty("--t", ink(b.c));
+  const spine = document.createElement("span"); spine.className = "spine";
+  const label = document.createElement("span"); label.textContent = b.t; spine.appendChild(label);
+  const cover = document.createElement("span"); cover.className = "cover";
+  cover.style.backgroundImage = 'url("assets/covers/' + b.img + '.jpg")';
+  el.append(spine, cover);
+  el.addEventListener("click", () => select(i));
+  el.addEventListener("dblclick", () => document.getElementById("d-open").click());
+  row.appendChild(el);
+});
+select(0);
+
+/* Wind chimes: plays the YouTube track inside this page (hidden player).
+   If YouTube refuses or is unreachable, falls back to chimes generated in the browser. */
+const YT_ID = "X7t--zPZdic";
+const chimeBtn = document.getElementById("chime");
+let chimeOn = false, ytPlayer = null, ytWorks = false, ytFailed = false, ytTimer = null;
+let actx = null, master = null, genTimer = null;
+function setChime(on, note) {
+  chimeOn = on;
+  chimeBtn.setAttribute("aria-pressed", on ? "true" : "false");
+  document.getElementById("chime-label").textContent = "Wind chimes: " + (on ? "on" : "off") + (on && note ? " " + note : "");
+}
+
+const NOTES = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51];
+function strike(when, freq, vol) {
+  [[1, 1, 3.6], [2.76, .35, 2.2], [5.4, .14, 1.2]].forEach(([mult, g, dur]) => {
+    const o = actx.createOscillator(), a = actx.createGain();
+    o.type = "sine"; o.frequency.value = freq * mult;
+    a.gain.setValueAtTime(0, when);
+    a.gain.linearRampToValueAtTime(vol * g, when + 0.006);
+    a.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    o.connect(a).connect(master); o.start(when); o.stop(when + dur + 0.1);
+  });
+}
+function gust() {
+  const n = Math.random() < 0.35 ? 1 + Math.floor(Math.random() * 3) : 1;
+  let t = actx.currentTime + 0.05;
+  for (let i = 0; i <= n; i++) {
+    strike(t, NOTES[Math.floor(Math.random() * NOTES.length)], 0.10 + Math.random() * 0.14);
+    t += 0.12 + Math.random() * 0.4;
+  }
+  genTimer = setTimeout(gust, 700 + Math.random() * 3200);
+}
+async function startGenerated() {
+  if (!actx) {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    master = actx.createGain(); master.gain.value = 0.6; master.connect(actx.destination);
+    const len = actx.sampleRate * 4, buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const src = actx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const f = actx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 420;
+    const g = actx.createGain(); g.gain.value = 0.05;
+    src.connect(f).connect(g).connect(master); src.start();
+  }
+  await actx.resume(); clearTimeout(genTimer); gust();
+}
+function stopGenerated() { clearTimeout(genTimer); if (actx) actx.suspend(); }
+
+function ytFallback() {
+  if (ytWorks || ytFailed) return;
+  ytFailed = true; clearTimeout(ytTimer);
+  try { if (ytPlayer && ytPlayer.destroy) ytPlayer.destroy(); } catch (e) {}
+  ytPlayer = null;
+  if (chimeOn) { startGenerated(); setChime(true, "(built-in)"); }
+}
+function startYouTube() {
+  ytTimer = setTimeout(ytFallback, 6000);
+  if (ytPlayer && ytPlayer.playVideo) { ytPlayer.playVideo(); return; }
+  if (document.getElementById("yt-api")) return;
+  let holder = document.getElementById("yt-holder");
+  if (!holder) {
+    holder = document.createElement("div"); holder.id = "yt-holder";
+    holder.style.cssText = "position:fixed;left:-9999px;top:0;width:320px;height:180px;";
+    holder.innerHTML = '<div id="yt-player"></div>'; document.body.appendChild(holder);
+  }
+  window.onYouTubeIframeAPIReady = () => {
+    ytPlayer = new YT.Player("yt-player", {
+      width: 320, height: 180, videoId: YT_ID,
+      playerVars: { autoplay: 1, loop: 1, playlist: YT_ID, controls: 0 },
+      events: {
+        onReady: e => { if (chimeOn) e.target.playVideo(); },
+        onStateChange: e => { if (e.data === 1) { ytWorks = true; clearTimeout(ytTimer); if (!chimeOn) e.target.pauseVideo(); } },
+        onError: ytFallback,
+      },
+    });
+  };
+  const tag = document.createElement("script"); tag.id = "yt-api";
+  tag.src = "https://www.youtube.com/iframe_api"; tag.onerror = ytFallback;
+  document.head.appendChild(tag);
+}
+chimeBtn.addEventListener("click", () => {
+  if (!chimeOn) {
+    setChime(true, ytFailed ? "(built-in)" : "");
+    if (ytFailed) startGenerated(); else startYouTube();
+  } else {
+    setChime(false); clearTimeout(ytTimer);
+    if (ytPlayer && ytPlayer.pauseVideo) { try { ytPlayer.pauseVideo(); } catch (e) {} }
+    stopGenerated();
+  }
+});
+</script>
+</body>
+</html>
